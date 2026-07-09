@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iRunner PLAN - Transcrição IA</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <img src="assets/logo.png" alt="iRunner Logo" class="nav-logo" style="height: 50px; width: 50px; border-radius: 50%; object-fit: contain; margin-right: 10px;"/>
+            iRunner PLAN
+        </div>
+        <div class="navbar-nav">
+            <a href="admin-dashboard.html">Dashboard</a>
+            <a href="admin-ai-upload.html" class="active">IA</a>
+            <a href="admin-prescription.html">Prescrever</a>
+            <a href="admin-atletas.html">Atletas</a>
+            <a href="admin-pagamentos.html">Pagamentos</a>
+            <a href="admin-treinadores.html">Treinadores</a>
+            <a href="#" id="logout-link">Sair</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h2 style="margin-bottom:10px; font-size:24px;">Transcrição com IA</h2>
+        <p style="color:#AAA; margin-bottom:30px;">Faça upload de uma imagem da planilha ou resultado de performance esportiva</p>
+        
+        <div id="alert-container"></div>
+        
+        <!-- Select Atleta -->
+        <div class="card" style="margin-bottom:30px;">
+            <label style="color: var(--accent); display:block; margin-bottom:10px;">Selecione o Atleta:</label>
+            <select id="athlete-selector" class="neon-btn" style="background:var(--gray); width:100%; text-align:left;">
+            </select>
+        </div>
+        
+        <form id="upload-form">
+            <div class="card" style="text-align:center; padding:40px;">
+                <div class="image-preview" id="image-preview">
+                    <div class="image-placeholder">
+                        <span style="font-size:48px; margin-bottom:10px;">📸</span>
+                        <p>Nenhuma imagem selecionada</p>
+                    </div>
+                </div>
+                <input type="file" id="image-input" accept="image/*" style="margin-bottom:20px; display:none;">
+                <div style="display:flex; gap:15px; justify-content:center; flex-wrap:wrap;">
+                    <button type="button" id="choose-file-btn" class="neon-btn accent">
+                        Escolher Imagem
+                    </button>
+                    <button type="submit" id="process-btn" class="neon-btn" disabled>
+                        Processar com IA
+                    </button>
+                </div>
+            </div>
+        </form>
+        
+        <!-- Resultado -->
+        <div id="result-box" class="result-box" style="display:none;">
+            <div class="result-header">
+                <span style="color: var(--success); font-size:24px;">✅</span>
+                <h3>Dados Extraídos</h3>
+            </div>
+            <div class="card primary-left" id="extracted-content">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:20px;">
+                    <div class="form-group">
+                        <label>Data do Treino</label>
+                        <input type="date" id="metric-date">
+                    </div>
+                    <div class="form-group">
+                        <label>Pace (min/km)</label>
+                        <input type="text" id="metric-pace" placeholder="6:30">
+                    </div>
+                    <div class="form-group">
+                        <label>Distância (km)</label>
+                        <input type="number" step="0.1" id="metric-distance" placeholder="5">
+                    </div>
+                    <div class="form-group">
+                        <label>Duração (min)</label>
+                        <input type="number" step="0.1" id="metric-duration" placeholder="32.5">
+                    </div>
+                    <div class="form-group">
+                        <label>Frequência Cardíaca (bpm)</label>
+                        <input type="number" id="metric-heartrate" placeholder="155">
+                    </div>
+                </div>
+                <h4 style="color:#AAA; margin-bottom:10px;">Exercícios Detectados:</h4>
+                <div id="exercises-list"></div>
+            </div>
+            <br>
+            <button id="save-btn" class="neon-btn accent">Salvar Dados do Atleta</button>
+        </div>
+    </div>
+    
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        let selectedFile = null;
+        let extractedData = null;
+        
+        document.getElementById('logout-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+        
+        // Load athletes
+        function loadAthleteSelector() {
+            const users = getUsers().filter(u => u.role === 'athlete');
+            const select = document.getElementById('athlete-selector');
+            select.innerHTML = users.map(a => `<option value="${a.id}" data-name="${a.name}">${a.name}</option>`).join('');
+        }
+        loadAthleteSelector();
+        
+        document.getElementById('choose-file-btn').addEventListener('click', function() {
+            document.getElementById('image-input').click();
+        });
+        
+        document.getElementById('image-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    document.getElementById('image-preview').innerHTML = 
+                        `<img src="${event.target.result}" alt="Preview">`;
+                    document.getElementById('process-btn').disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!selectedFile) return;
+            
+            const btn = document.getElementById('process-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width:20px; height:20px; display:inline-block; vertical-align:middle; margin-right:8px;"></span>Processando...';
+            
+            setTimeout(() => {
+                extractedData = MOCK_EXTRACTED_DATA;
+                
+                // Pre-fill form
+                document.getElementById('metric-date').value = new Date().toISOString().split('T')[0];
+                document.getElementById('metric-pace').value = "6:15";
+                document.getElementById('metric-distance').value = "6";
+                document.getElementById('metric-duration').value = "37.5";
+                document.getElementById('metric-heartrate').value = "158";
+                
+                // Show exercises
+                const exercisesDiv = document.getElementById('exercises-list');
+                exercisesDiv.innerHTML = extractedData.exercicios.map(ex => `
+                    <div style="padding:10px; border-bottom:1px solid #333; margin-bottom:10px;">
+                        <p><strong style="color:var(--accent);">${ex.nome}</strong></p>
+                        <p style="font-size:14px; color:#AAA;">
+                            ${ex.series} séries × ${ex.repeticoes} - ${ex.intensidade}
+                        </p>
+                    </div>
+                `).join('');
+                
+                document.getElementById('result-box').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Processar com IA';
+                showAlert('Processamento concluído! Edite os dados se necessário e salve!', 'success');
+            }, 2000);
+        });
+        
+        document.getElementById('save-btn').addEventListener('click', function() {
+            const athleteSelect = document.getElementById('athlete-selector');
+            const athleteId = parseInt(athleteSelect.value);
+            const athleteName = athleteSelect.options[athleteSelect.selectedIndex].dataset.name;
+            
+            const dateInput = document.getElementById('metric-date').value;
+            const dateObj = new Date(dateInput);
+            const formattedDate = dateObj.toLocaleDateString('pt-BR');
+            
+            const newMetric = {
+                id: generateUniqueId(getPerformanceMetrics()),
+                athleteId: athleteId,
+                athleteName: athleteName,
+                date: formattedDate,
+                metrics: {
+                    pace: document.getElementById('metric-pace').value,
+                    distance: parseFloat(document.getElementById('metric-distance').value) || 0,
+                    duration: parseFloat(document.getElementById('metric-duration').value) || 0,
+                    heartRate: parseInt(document.getElementById('metric-heartrate').value) || 0
+                }
+            };
+            
+            const metrics = getPerformanceMetrics();
+            metrics.push(newMetric);
+            savePerformanceMetrics(metrics);
+            
+            showAlert('Dados do atleta salvos com sucesso!', 'success');
+            
+            // Reset form
+            document.getElementById('result-box').style.display = 'none';
+            document.getElementById('image-preview').innerHTML = `
+                <div class="image-placeholder">
+                    <span style="font-size:48px; margin-bottom:10px;">📸</span>
+                    <p>Nenhuma imagem selecionada</p>
+                </div>
+            `;
+            selectedFile = null;
+            document.getElementById('process-btn').disabled = true;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iRunner PLAN - Atletas</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .athlete-card {
+            display:flex; 
+            flex-wrap:wrap; 
+            gap:15px; 
+            align-items:center; 
+            justify-content:space-between;
+        }
+        .athlete-avatar-small {
+            width: 60px; 
+            height:60px; 
+            border-radius:50%; 
+            border:3px solid var(--primary);
+            object-fit: cover;
+        }
+        .modal-overlay {
+            position:fixed; top:0; left:0; right:0; bottom:0; 
+            background:rgba(0,0,0,0.85); 
+            display:none; justify-content:center; align-items:center; z-index:1000;
+            padding:20px;
+        }
+        .modal-form {
+            background: #0A0A0A; 
+            border:2px solid var(--primary); 
+            border-radius:16px; 
+            padding:30px; 
+            max-width:550px; 
+            width:100%; 
+            max-height:90vh;
+            overflow-y:auto;
+            position:relative;
+        }
+        .modal-close {
+            position:absolute; 
+            top:15px; right:15px; 
+            font-size:28px; 
+            color:var(--error); 
+            cursor:pointer;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <img src="assets/logo.png" alt="iRunner Logo" class="nav-logo" style="height: 50px; width: 50px; border-radius: 50%; object-fit: contain; margin-right: 10px;">
+            iRunner PLAN
+        </div>
+        <div class="navbar-nav">
+            <a href="admin-dashboard.html">Dashboard</a>
+            <a href="admin-ai-upload.html">IA</a>
+            <a href="admin-prescription.html">Prescrever</a>
+            <a href="admin-atletas.html" class="active">Atletas</a>
+            <a href="admin-pagamentos.html">Pagamentos</a>
+            <a href="admin-treinadores.html">Treinadores</a>
+            <a href="admin-config.html">⚙️ Config</a>
+            <a href="#" id="logout-link">Sair</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:15px; flex-wrap:wrap; margin-bottom:25px;">
+            <h1>👥 Gerenciar Atletas</h1>
+            <button id="add-athlete-btn" class="neon-btn accent">➕ Adicionar Atleta</button>
+        </div>
+        
+        <div id="athletes-list"></div>
+    </div>
+
+    <!-- Modal Add/Edit -->
+    <div class="modal-overlay" id="athlete-modal">
+        <div class="modal-form">
+            <span class="modal-close" id="close-athlete-modal">&times;</span>
+            <h2 id="modal-title">Adicionar Novo Atleta</h2>
+            <form id="athlete-form">
+                <div class="form-group" style="text-align:center;">
+                    <label style="display:block; margin-bottom:10px;">Foto do Atleta</label>
+                    <input type="file" id="new-athlete-avatar-input" accept="image/*" style="display:none;">
+                    <img id="new-athlete-avatar-preview" src="" alt="Preview" style="width:100px;height:100px;border-radius:50%;border:3px solid var(--primary);cursor:pointer;">
+                    <p style="color:#AAA; font-size:12px; margin-top:5px;">Clique para alterar</p>
+                </div>
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="new-athlete-name" required placeholder="Nome do atleta">
+                </div>
+                <div class="form-group">
+                    <label>Email (para login)</label>
+                    <input type="text" id="new-athlete-email" required placeholder="email@exemplo.com">
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="text" id="new-athlete-password" required placeholder="Senha de acesso">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Idade</label>
+                        <input type="number" id="new-athlete-idade" placeholder="25">
+                    </div>
+                    <div class="form-group">
+                        <label>Peso (kg)</label>
+                        <input type="number" id="new-athlete-peso" placeholder="70">
+                    </div>
+                    <div class="form-group">
+                        <label>Altura (m)</label>
+                        <input type="number" id="new-athlete-altura" step="0.01" placeholder="1.75">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Objetivo</label>
+                    <textarea id="new-athlete-objetivo" rows="2" placeholder="Correr uma maratona"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Experiência</label>
+                        <input type="text" id="new-athlete-experiencia" placeholder="1 ano de corrida">
+                    </div>
+                    <div class="form-group">
+                        <label>Início do Treinamento</label>
+                        <input type="date" id="new-athlete-inicio">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Prova Alvo</label>
+                        <input type="text" id="new-athlete-prova" placeholder="Maratona de São Paulo">
+                    </div>
+                    <div class="form-group">
+                        <label>Treinador Responsável</label>
+                        <input type="text" id="new-athlete-treinador" placeholder="Nome do treinador">
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button type="submit" id="athlete-submit-btn" class="neon-btn accent" style="flex:1;">💾 Salvar Atleta</button>
+                    <button type="button" id="cancel-athlete-btn" class="neon-btn" style="border-color:#AAA; color:#AAA; flex:1;">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        
+        document.getElementById('logout-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+        
+        let currentNewAthleteAvatar = DEFAULT_AVATAR;
+        let editingAthleteId = null; // null means add
+        const modal = document.getElementById('athlete-modal');
+        
+        // Avatar handling
+        const avatarImg = document.getElementById('new-athlete-avatar-preview');
+        const avatarInput = document.getElementById('new-athlete-avatar-input');
+        avatarImg.addEventListener('click', () => avatarInput.click());
+        avatarInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    currentNewAthleteAvatar = ev.target.result;
+                    avatarImg.src = currentNewAthleteAvatar;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Modal controls
+        document.getElementById('close-athlete-modal').addEventListener('click', closeModal);
+        document.getElementById('cancel-athlete-btn').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+        
+        document.getElementById('add-athlete-btn').addEventListener('click', () => {
+            editingAthleteId = null;
+            document.getElementById('modal-title').textContent = 'Adicionar Novo Atleta';
+            resetForm();
+            openModal();
+        });
+        
+        function openModal() { modal.style.display = 'flex'; }
+        function closeModal() { modal.style.display = 'none'; editingAthleteId = null; }
+        
+        function resetForm() {
+            document.getElementById('athlete-form').reset();
+            currentNewAthleteAvatar = DEFAULT_AVATAR;
+            avatarImg.src = currentNewAthleteAvatar;
+        }
+        
+        // Form submit handler for add or edit
+        document.getElementById('athlete-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            try {
+                const users = getUsers();
+                const name = document.getElementById('new-athlete-name').value.trim();
+                const email = document.getElementById('new-athlete-email').value.trim();
+                const password = document.getElementById('new-athlete-password').value.trim();
+                
+                // Check duplicate email if adding new or changing email
+                if (!editingAthleteId) {
+                    const emailExists = users.some(u => u.email === email);
+                    if (emailExists) {
+                        showAlert('Email já cadastrado!', 'error');
+                        return;
+                    }
+                } else {
+                    const exists = users.some(u => u.id !== editingAthleteId && u.email === email);
+                    if (exists) {
+                        showAlert('Email já está em uso!', 'error');
+                        return;
+                    }
+                }
+                
+                const athleteData = {
+                    name: name,
+                    email: email,
+                    password: password,
+                    idade: document.getElementById('new-athlete-idade').value || null,
+                    peso: document.getElementById('new-athlete-peso').value || null,
+                    altura: document.getElementById('new-athlete-altura').value || null,
+                    objetivo: document.getElementById('new-athlete-objetivo').value.trim() || null,
+                    experiencia: document.getElementById('new-athlete-experiencia').value.trim() || null,
+                    inicioTreinamento: document.getElementById('new-athlete-inicio').value ? new Date(document.getElementById('new-athlete-inicio').value).toLocaleDateString('pt-BR') : null,
+                    provaAlvo: document.getElementById('new-athlete-prova').value.trim() || null,
+                    treinador: document.getElementById('new-athlete-treinador').value.trim() || null,
+                    avatar: currentNewAthleteAvatar
+                };
+                
+                if (!editingAthleteId) {
+                    // Add new
+                    const newId = generateUniqueId(users);
+                    const newUser = {
+                        id: newId,
+                        role: 'athlete',
+                        ...athleteData
+                    };
+                    users.push(newUser);
+                    showAlert('Atleta adicionado com sucesso!', 'success');
+                } else {
+                    // Edit existing
+                    const idx = users.findIndex(u => u.id === editingAthleteId);
+                    if (idx !== -1) {
+                        users[idx] = {
+                            ...users[idx],
+                            ...athleteData
+                        };
+                        showAlert('Atleta atualizado com sucesso!', 'success');
+                    }
+                }
+                
+                saveUsers(users);
+                loadAthletes();
+                closeModal();
+            } catch (error) {
+                console.error(error);
+                showAlert('Erro ao salvar atleta!', 'error');
+            }
+        });
+        
+        function editAthlete(athleteId) {
+            const users = getUsers();
+            const athlete = users.find(u => u.id === athleteId);
+            if (!athlete) return;
+            
+            editingAthleteId = athleteId;
+            document.getElementById('modal-title').textContent = 'Editar Atleta';
+            
+            document.getElementById('new-athlete-name').value = athlete.name || '';
+            document.getElementById('new-athlete-email').value = athlete.email || '';
+            document.getElementById('new-athlete-password').value = athlete.password || '';
+            document.getElementById('new-athlete-idade').value = athlete.idade || '';
+            document.getElementById('new-athlete-peso').value = athlete.peso || '';
+            document.getElementById('new-athlete-altura').value = athlete.altura || '';
+            document.getElementById('new-athlete-objetivo').value = athlete.objetivo || '';
+            document.getElementById('new-athlete-experiencia').value = athlete.experiencia || '';
+            document.getElementById('new-athlete-prova').value = athlete.provaAlvo || '';
+            document.getElementById('new-athlete-treinador').value = athlete.treinador || '';
+            
+            currentNewAthleteAvatar = athlete.avatar || DEFAULT_AVATAR;
+            avatarImg.src = currentNewAthleteAvatar;
+            
+            openModal();
+        }
+        
+        function deleteAthlete(athleteId) {
+            if (!confirm('Tem certeza que deseja excluir este atleta e todos os seus dados?')) return;
+            try {
+                let users = getUsers();
+                users = users.filter(u => u.id !== athleteId);
+                saveUsers(users);
+                
+                let workouts = getWorkouts();
+                workouts = workouts.filter(w => w.athleteId !== athleteId);
+                saveWorkouts(workouts);
+                
+                let payments = getPayments();
+                payments = payments.filter(p => p.athleteId !== athleteId);
+                savePayments(payments);
+                
+                showAlert('Atleta e dados relacionados removidos!', 'success');
+                loadAthletes();
+            } catch (err) {
+                console.error(err);
+                showAlert('Erro ao remover atleta!', 'error');
+            }
+        }
+        
+        function loadAthletes() {
+            const users = getUsers().filter(u => u.role === 'athlete');
+            const container = document.getElementById('athletes-list');
+            if (users.length === 0) {
+                container.innerHTML = '<div class="card"><p style="color:#AAA; text-align:center;">Nenhum atleta cadastrado!</p></div>';
+                return;
+            }
+            
+            container.innerHTML = users.map(athlete => {
+                return `
+                    <div class="card accent-left" style="margin-bottom:15px;">
+                        <div class="athlete-card">
+                            <div style="display:flex; gap:15px; align-items:center; flex:1; min-width:250px;">
+                                <img src="${athlete.avatar || DEFAULT_AVATAR}" class="athlete-avatar-small" alt="Avatar">
+                                <div style="flex:1;">
+                                    <h4 style="margin:0 0 5px; color:var(--white);">${athlete.name}</h4>
+                                    <p style="color:#AAA; font-size:14px; margin:0;">${athlete.email}</p>
+                                    ${athlete.objetivo ? `<p style="color:#999; font-size:13px; margin-top:3px;">🎯 ${athlete.objetivo}</p>` : ''}
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button onclick="editAthlete(${athlete.id})" class="neon-btn" style="border-color: #00E5FF; color: #00E5FF; padding:8px 12px;">✏️ Editar</button>
+                                <button onclick="deleteAthlete(${athlete.id})" class="neon-btn" style="border-color:var(--error); color:var(--error); padding:8px 12px;">🗑️ Remover</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        loadAthletes();
+    </script>
+</body>
+</html>

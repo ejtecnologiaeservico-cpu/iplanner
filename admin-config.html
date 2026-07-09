@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iRunner PLAN - Configurações</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <img src="assets/logo.png" alt="iRunner Logo" class="nav-logo" style="height: 50px; width: 50px; border-radius: 50%; object-fit: contain; margin-right: 10px;">
+            iRunner PLAN
+        </div>
+        <div class="navbar-nav">
+            <a href="admin-dashboard.html">Dashboard</a>
+            <a href="admin-ai-upload.html">IA</a>
+            <a href="admin-prescription.html">Prescrever</a>
+            <a href="admin-atletas.html">Atletas</a>
+            <a href="admin-pagamentos.html">Pagamentos</a>
+            <a href="admin-treinadores.html">Treinadores</a>
+            <a href="admin-config.html" class="active">⚙️ Config</a>
+            <a href="#" id="logout-link">Sair</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h1 style="margin-bottom:25px; display:flex; align-items:center; gap:10px;">⚙️ Configurações do Sistema</h1>
+
+        <!-- Configurações de Pagamento Pix -->
+        <div class="card" style="margin-bottom:30px;">
+            <h3 style="margin-bottom:15px; color:var(--accent);">💰 Configurações Pix e Notificações</h3>
+            <form id="config-form">
+                <div class="form-group">
+                    <label>Pix Copia e Cola</label>
+                    <textarea id="pix-code" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Email para Notificações</label>
+                    <input type="email" id="notification-email" placeholder="email@exemplo.com">
+                </div>
+                <div class="form-group">
+                    <label>Número WhatsApp (WhatsApp para Notificações (apenas números))</label>
+                    <input type="text" id="notification-whatsapp" placeholder="74999999999">
+                </div>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button type="submit" class="neon-btn accent" style="flex:1;">💾 Salvar Configurações</button>
+                    <button type="button" id="reset-btn" class="neon-btn" style="border-color:#AAA; color:#AAA; flex:1;">🔄 Restaurar Padrão</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="card">
+            <h4 style="margin-bottom:10px;">ℹ️ Instruções</h4>
+            <p style="color:#AAA; font-size:14px; line-height:1.6;">
+                As configurações salvas aqui são usadas no pagamento dos atletas para enviar notificações por email e WhatsApp! O código Pix é exibido no modal de pagamento!
+            </p>
+        </div>
+    </div>
+    
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        
+        document.getElementById('logout-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+        
+        // Load existing config
+        let config = getConfig();
+        document.getElementById('pix-code').value = config.pixCode;
+        document.getElementById('notification-email').value = config.notificationEmail;
+        document.getElementById('notification-whatsapp').value = config.notificationWhatsapp;
+
+        document.getElementById('config-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            try {
+                const newConfig = {
+                    pixCode: document.getElementById('pix-code').value.trim(),
+                    notificationEmail: document.getElementById('notification-email').value.trim(),
+                    notificationWhatsapp: document.getElementById('notification-whatsapp').value.trim()
+                };
+                saveConfig(newConfig);
+                config = newConfig;
+                showAlert('Configurações salvas com sucesso!', 'success');
+            } catch (err) {
+                showAlert('Erro ao salvar configurações!', 'error');
+            }
+        });
+        
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            if (confirm('Restaurar configurações padrão?')) {
+                document.getElementById('pix-code').value = DEFAULT_CONFIG.pixCode;
+                document.getElementById('notification-email').value = DEFAULT_CONFIG.notificationEmail;
+                document.getElementById('notification-whatsapp').value = DEFAULT_CONFIG.notificationWhatsapp;
+            }
+        });
+    </script>
+</body>
+</html>

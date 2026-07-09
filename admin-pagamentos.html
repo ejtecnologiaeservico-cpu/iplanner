@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iRunner PLAN - Pagamentos</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .modal-overlay {
+            position:fixed; top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,0.85);
+            display:none; justify-content:center; align-items:center; z-index:1000;
+            padding:20px;
+        }
+        .modal-form {
+            background:#0A0A0A; border:2px solid var(--primary); border-radius:16px;
+            padding:30px; max-width:500px; width:100%; position:relative;
+        }
+        .modal-close {
+            position:absolute; top:15px; right:15px; color:var(--error);
+            font-size:28px; cursor:pointer;
+        }
+        .badge {
+            padding:4px 10px; border-radius:20px; font-weight:bold; font-size:13px;
+        }
+        .badge-pago { background:#1a4a1a; color:#4CD964; }
+        .badge-pendente { background:#3a2a00; color:#FFB800; }
+        .badge-atrasado { background:#4a1a1a; color:#FF3B30; }
+        .badge-pending-confirmation { background:#0a2a2a; color:#00E5FF; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <img src="assets/logo.png" alt="iRunner Logo" class="nav-logo" style="height: 50px; width: 50px; border-radius: 50%; object-fit: contain; margin-right: 10px;">
+            iRunner PLAN
+        </div>
+        <div class="navbar-nav">
+            <a href="admin-dashboard.html">Dashboard</a>
+            <a href="admin-ai-upload.html">IA</a>
+            <a href="admin-prescription.html">Prescrever</a>
+            <a href="admin-atletas.html">Atletas</a>
+            <a href="admin-pagamentos.html" class="active">Pagamentos</a>
+            <a href="admin-treinadores.html">Treinadores</a>
+            <a href="admin-config.html">⚙️ Config</a>
+            <a href="#" id="logout-link">Sair</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:15px; flex-wrap:wrap; margin-bottom:25px;">
+            <h1>💰 Gerenciar Pagamentos</h1>
+            <button id="add-payment-btn" class="neon-btn accent">➕ Adicionar Pagamento</button>
+        </div>
+        
+        <div id="payments-list"></div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal-overlay" id="payment-modal">
+        <div class="modal-form">
+            <span class="modal-close" id="close-payment-modal">&times;</span>
+            <h2 id="payment-modal-title">Adicionar Novo Pagamento</h2>
+            <form id="payment-form">
+                <div class="form-group">
+                    <label>Atleta</label>
+                    <select id="payment-athlete" required></select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select id="payment-type" required>
+                            <option value="mensalidade">Mensalidade</option>
+                            <option value="matricula">Matrícula</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor (R$)</label>
+                        <input type="number" id="payment-amount" required step="0.01" placeholder="150.00">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Data de Vencimento</label>
+                    <input type="date" id="payment-due-date" required>
+                </div>
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="payment-notes" rows="3" placeholder="Informações adicionais..."></textarea>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:20px;">
+                    <button type="submit" class="neon-btn accent" style="flex:1;">💾 Salvar</button>
+                    <button type="button" id="cancel-payment-btn" class="neon-btn" style="border-color:#AAA; color:#AAA; flex:1;">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        
+        document.getElementById('logout-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+
+        let editingPaymentId = null;
+        const modal = document.getElementById('payment-modal');
+
+        document.getElementById('add-payment-btn').addEventListener('click', () => {
+            editingPaymentId = null;
+            document.getElementById('payment-modal-title').textContent = 'Adicionar Novo Pagamento';
+            resetPaymentForm();
+            loadAthleteSelect();
+            openModal();
+        });
+        
+        document.getElementById('close-payment-modal').addEventListener('click', closeModal);
+        document.getElementById('cancel-payment-btn').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+        
+        function openModal() { modal.style.display = 'flex'; }
+        function closeModal() { modal.style.display = 'none'; editingPaymentId = null; }
+        
+        function resetPaymentForm() { document.getElementById('payment-form').reset(); }
+        
+        function loadAthleteSelect() {
+            const athletes = getUsers().filter(u => u.role === 'athlete');
+            const select = document.getElementById('payment-athlete');
+            select.innerHTML = athletes.map(a => `<option value="${a.id}" data-name="${a.name}">${a.name}</option>`).join('');
+        }
+        
+        document.getElementById('payment-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            try {
+                const payments = getPayments();
+                const athleteSelect = document.getElementById('payment-athlete');
+                
+                const paymentData = {
+                    athleteId: parseInt(athleteSelect.value),
+                    athleteName: athleteSelect.options[athleteSelect.selectedIndex].dataset.name,
+                    type: document.getElementById('payment-type').value,
+                    amount: parseFloat(document.getElementById('payment-amount').value),
+                    dueDate: document.getElementById('payment-due-date').value,
+                    status: 'pendente',
+                    notes: document.getElementById('payment-notes').value.trim() || null
+                };
+
+                if (!editingPaymentId) {
+                    const newId = generateUniqueId(payments);
+                    payments.push({ id: newId, ...paymentData });
+                    showAlert('Pagamento adicionado!', 'success');
+                } else {
+                    const idx = payments.findIndex(p => p.id === editingPaymentId);
+                    if (idx !== -1) {
+                        // Keep status
+                        payments[idx] = {
+                            ...payments[idx],
+                            ...paymentData
+                        };
+                        showAlert('Pagamento atualizado!', 'success');
+                    }
+                }
+
+                savePayments(payments);
+                loadPayments();
+                closeModal();
+            } catch (error) {
+                console.error(error);
+                showAlert('Erro ao salvar pagamento!', 'error');
+            }
+        });
+
+        function editPayment(paymentId) {
+            const payments = getPayments();
+            const payment = payments.find(p => p.id === paymentId);
+            if (!payment) return;
+            
+            editingPaymentId = paymentId;
+            document.getElementById('payment-modal-title').textContent = 'Editar Pagamento';
+            loadAthleteSelect();
+            
+            document.getElementById('payment-athlete').value = payment.athleteId;
+            document.getElementById('payment-type').value = payment.type;
+            document.getElementById('payment-amount').value = payment.amount;
+            document.getElementById('payment-due-date').value = payment.dueDate;
+            document.getElementById('payment-notes').value = payment.notes || '';
+            
+            openModal();
+        }
+
+        function markAsPaid(paymentId) {
+            try {
+                const payments = getPayments();
+                const idx = payments.findIndex(p => p.id === paymentId);
+                if (idx === -1) return;
+                
+                if (payments[idx].status === 'pago') {
+                    showAlert('Já está pago!', 'error');
+                    return;
+                }
+
+                payments[idx].status = 'pago';
+                savePayments(payments);
+                
+                // Notify trainer
+                showAlert(`Pagamento de ${payments[idx].athleteName} marcado como pago!`, 'success');
+                playNotificationSound();
+                
+                if (confirm('Enviar notificações (email/WhatsApp)?')) {
+                    const config = getConfig();
+                    const msg = `O atleta ${payments[idx].athleteName} realizou um pagamento de R$${payments[idx].amount.toFixed(2)} referente a ${payments[idx].type}!`;
+                    
+                    // WhatsApp
+                    window.open(`https://wa.me/55${config.notificationWhatsapp}?text=${encodeURIComponent(msg)}`);
+                    
+                    // Email
+                    window.open(`mailto:${config.notificationEmail}?subject=${encodeURIComponent('Pagamento Recebido')}&body=${encodeURIComponent(msg)}`);
+                }
+
+                loadPayments();
+            } catch (err) {
+                console.error(err);
+                showAlert('Erro!', 'error');
+            }
+        }
+
+        function deletePayment(paymentId) {
+            if (!confirm('Remover este pagamento?')) return;
+            try {
+                const payments = getPayments().filter(p => p.id !== paymentId);
+                savePayments(payments);
+                showAlert('Pagamento removido!', 'success');
+                loadPayments();
+            } catch (error) {
+                console.error(error);
+                showAlert('Erro ao remover!', 'error');
+            }
+        }
+        
+        function loadPayments() {
+            const payments = getPayments();
+            const container = document.getElementById('payments-list');
+            
+            if (payments.length === 0) {
+                container.innerHTML = '<div class="card"><p style="color:#AAA; text-align:center;">Nenhum pagamento cadastrado!</p></div>';
+                return;
+            }
+            
+            container.innerHTML = payments.map(p => {
+                const today = new Date();
+                const due = new Date(p.dueDate);
+                const diff = Math.ceil((due - today) / (1000*60*60*24));
+                
+                let badgeClass = 'badge-pendente';
+                let badgeText = 'Pendente';
+                let showMarkPaid = false;
+                if (p.status === 'pago') {
+                    badgeClass = 'badge-pago';
+                    badgeText = 'Pago';
+                } else if (p.status === 'pending_confirmation') {
+                    badgeClass = 'badge-pending-confirmation';
+                    badgeText = 'Aguardando confirmação';
+                    showMarkPaid = true;
+                } else if (diff < 0) {
+                    badgeClass = 'badge-atrasado';
+                    badgeText = 'Atrasado';
+                    showMarkPaid = true;
+                } else if (diff <= 2) {
+                    badgeClass = 'badge-pendente';
+                    badgeText = `Vencendo em ${diff} dias`;
+                    showMarkPaid = true;
+                } else {
+                    showMarkPaid = true;
+                }
+                
+                return `
+                    <div class="card accent-left" style="margin-bottom:15px;">
+                        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:15px;">
+                            <div style="flex:1; min-width:250px;">
+                                <h4 style="margin:0 0 5px; color:var(--white);">
+                                    ${p.type === 'matricula' ? 'Matrícula' : 'Mensalidade'} - ${p.athleteName}
+                                </h4>
+                                <p style="color:#AAA; font-size:14px; margin:0;">
+                                    Valor: <span style="color:#4CD964; font-weight:bold;">R$ ${p.amount.toFixed(2)}</span>
+                                </p>
+                                <p style="color:#AAA; font-size:14px; margin:0;">
+                                    Vencimento: ${formatDate(p.dueDate)}
+                                </p>
+                                ${p.notes ? `<p style="color:#888; font-size:13px; margin-top:4px;">📝 ${p.notes}</p>` : ''}
+                            </div>
+                            <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+                                <span class="badge ${badgeClass}">${badgeText}</span>
+                                <div style="display:flex; gap:8px;">
+                                    ${showMarkPaid ? `<button onclick="markAsPaid(${p.id})" class="neon-btn" style="border-color:#4CD964; color:#4CD964; padding:6px 10px;">✅ Confirmar Pagamento</button>` : ''}
+                                    <button onclick="editPayment(${p.id})" class="neon-btn" style="border-color:#00E5FF; color:#00E5FF; padding:6px 10px;">✏️ Editar</button>
+                                    <button onclick="deletePayment(${p.id})" class="neon-btn" style="border-color:var(--error); color:var(--error); padding:6px 10px;">🗑️ Remover</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        loadPayments();
+    </script>
+</body>
+</html>

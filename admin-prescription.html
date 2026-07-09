@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iRunner PLAN - Prescrição de Treino</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <img src="assets/logo.png" alt="iRunner Logo" class="nav-logo" style="height: 50px; width: 50px; border-radius: 50%; object-fit: contain; margin-right: 10px;"/>
+            iRunner PLAN
+        </div>
+        <div class="navbar-nav">
+            <a href="admin-dashboard.html">Dashboard</a>
+            <a href="admin-ai-upload.html">IA</a>
+            <a href="admin-prescription.html" class="active">Prescrever</a>
+            <a href="admin-atletas.html">Atletas</a>
+            <a href="admin-pagamentos.html">Pagamentos</a>
+            <a href="admin-treinadores.html">Treinadores</a>
+            <a href="#" id="logout-link">Sair</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h2 style="margin-bottom:20px; font-size:24px;">Prescrição de Treino</h2>
+        
+        <div id="alert-container"></div>
+        
+        <form id="prescription-form">
+            <div class="input-group">
+                <label>Selecionar Atleta</label>
+                <select id="athlete-select" class="neon-btn" style="background:var(--gray); width:100%; text-align:left;" required>
+                </select>
+            </div>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">
+                <div class="input-group">
+                    <label>Semana</label>
+                    <input type="number" id="week-input" min="1" value="1" required>
+                </div>
+                <div class="input-group">
+                    <label>Dia da Semana</label>
+                    <select id="day-select" class="neon-btn" style="background:var(--gray); width:100%; text-align:left;" required>
+                        <option value="Seg">Segunda</option>
+                        <option value="Ter">Terça</option>
+                        <option value="Qua">Quarta</option>
+                        <option value="Qui">Quinta</option>
+                        <option value="Sex">Sexta</option>
+                        <option value="Sáb">Sábado</option>
+                        <option value="Dom">Domingo</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Data do Treino</label>
+                    <input type="date" id="day-date-input">
+                </div>
+            </div>
+            
+            <div class="input-group">
+                <label>Descrição do Treino</label>
+                <input type="text" id="description-input" placeholder="Ex: Treino de base - Corrida contínua">
+            </div>
+            
+            <h3 style="color: var(--white); margin-bottom:15px; margin-top:30px;">Exercícios do Treino</h3>
+            
+            <!-- Formulário para adicionar exercícios -->
+            <div class="card" style="margin-bottom:20px; padding:20px;">
+                <div style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+                    <div>
+                        <label>Nome do Exercício</label>
+                        <input type="text" id="new-exercise-name" placeholder="Ex: Corrida Leve">
+                    </div>
+                    <div>
+                        <label>Séries</label>
+                        <input type="text" id="new-exercise-sets" placeholder="Ex: 3">
+                    </div>
+                    <div>
+                        <label>Repetições/Duração</label>
+                        <input type="text" id="new-exercise-reps" placeholder="Ex: 10x ou 30 min">
+                    </div>
+                    <div>
+                        <label>Intensidade</label>
+                        <input type="text" id="new-exercise-intensity" placeholder="Ex: Z2">
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" id="add-exercise-btn" class="neon-btn accent" style="padding:10px 20px;">
+                        Adicionar Exercício
+                    </button>
+                    <button type="button" id="clear-exercises-btn" class="neon-btn" style="padding:10px 20px;">
+                        Limpar Todos
+                    </button>
+                </div>
+            </div>
+            
+            <div id="exercises-container">
+                <!-- Exercícios adicionados aparecerão aqui -->
+            </div>
+            
+            <div style="margin-top:30px; display:flex; gap:15px; flex-wrap:wrap;">
+                <button type="submit" name="action" value="save" class="neon-btn">
+                    Salvar Treino
+                </button>
+                <button type="button" id="pdf-btn" class="neon-btn accent">
+                    Exportar PDF
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        
+        document.getElementById('logout-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+        
+        let exercises = [];
+        
+        function loadAthletesSelect() {
+            const users = getUsers();
+            const athletes = users.filter(u => u.role === 'athlete');
+            const select = document.getElementById('athlete-select');
+            select.innerHTML = athletes.map(a => `<option value="${a.id}" data-name="${a.name}">${a.name}</option>`).join('');
+        }
+        
+        function addExercise() {
+            const name = document.getElementById('new-exercise-name').value.trim();
+            const sets = document.getElementById('new-exercise-sets').value.trim();
+            const reps = document.getElementById('new-exercise-reps').value.trim();
+            const intensity = document.getElementById('new-exercise-intensity').value.trim();
+            
+            if (!name || !sets || !reps || !intensity) {
+                showAlert('Preencha todos os campos do exercício!', 'error');
+                return;
+            }
+            
+            exercises.push({ name, sets, reps, intensity });
+            renderExercises();
+            
+            // Limpar campos
+            document.getElementById('new-exercise-name').value = '';
+            document.getElementById('new-exercise-sets').value = '';
+            document.getElementById('new-exercise-reps').value = '';
+            document.getElementById('new-exercise-intensity').value = '';
+        }
+        
+        function clearExercises() {
+            exercises = [];
+            renderExercises();
+        }
+        
+        function removeExercise(index) {
+            exercises.splice(index, 1);
+            renderExercises();
+        }
+        
+        function renderExercises() {
+            const container = document.getElementById('exercises-container');
+            if (exercises.length === 0) {
+                container.innerHTML = '<p style="color:#AAA; text-align:center; padding:20px;">Nenhum exercício adicionado</p>';
+                return;
+            }
+            
+            container.innerHTML = exercises.map((exercise, index) => `
+                <div class="card accent-left exercise-item" style="margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h4 style="margin-bottom:10px;">${exercise.name}</h4>
+                            <p style="color:#AAA;"><strong>${exercise.sets}</strong> séries × <strong>${exercise.reps}</strong> - <span style="color:var(--accent);">${exercise.intensity}</span></p>
+                        </div>
+                        <button type="button" class="neon-btn" style="padding:5px 15px; border-color:#FF3B30; color:#FF3B30;" onclick="removeExercise(${index})">
+                            Remover
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        document.getElementById('prescription-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const athleteId = parseInt(document.getElementById('athlete-select').value);
+            const athleteName = document.getElementById('athlete-select').options[document.getElementById('athlete-select').selectedIndex].dataset.name;
+            const week = parseInt(document.getElementById('week-input').value);
+            const day = document.getElementById('day-select').value;
+            const dayDateInput = document.getElementById('day-date-input').value;
+            const description = document.getElementById('description-input').value.trim();
+            
+            if (exercises.length === 0) {
+                showAlert('Adicione pelo menos um exercício!', 'error');
+                return;
+            }
+            
+            const workouts = getWorkouts();
+            const newId = Math.max(...workouts.map(w => w.id), 0) + 1;
+            const newWorkout = {
+                id: newId,
+                athleteId,
+                athleteName,
+                week,
+                day,
+                dayDate: dayDateInput ? new Date(dayDateInput).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR'),
+                description,
+                exercises: exercises,
+                checkIn: null
+            };
+            workouts.push(newWorkout);
+            saveWorkouts(workouts);
+            
+            showAlert(`Treino para ${athleteName} salvo com sucesso!`, 'success');
+            
+            // Limpar formulário após salvar
+            exercises = [];
+            renderExercises();
+            document.getElementById('description-input').value = '';
+        });
+        
+        document.getElementById('pdf-btn').addEventListener('click', function() {
+            const athleteName = document.getElementById('athlete-select').options[document.getElementById('athlete-select').selectedIndex].dataset.name || 'Atleta Exemplo';
+            if (exercises.length === 0) {
+                showAlert('Adicione exercícios para gerar o PDF!', 'error');
+                return;
+            }
+            downloadPDF(athleteName, exercises);
+        });
+        
+        document.getElementById('add-exercise-btn').addEventListener('click', addExercise);
+        document.getElementById('clear-exercises-btn').addEventListener('click', clearExercises);
+        
+        loadAthletesSelect();
+        renderExercises();
+    </script>
+</body>
+</html>

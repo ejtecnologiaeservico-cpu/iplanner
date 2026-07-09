@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iRunner PLAN - Painel do Admin</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .notification-card {
+            background: linear-gradient(135deg, #2B0038 0%, #1a0a2e 100%);
+            border: 2px solid #00E5FF;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <img src="assets/logo.png" alt="iRunner Logo" class="nav-logo" style="height: 50px; width: 50px; border-radius: 50%; object-fit: contain; margin-right: 10px;"/>
+            iRunner PLAN
+        </div>
+        <div class="navbar-nav">
+            <a href="admin-dashboard.html" class="active">Dashboard</a>
+            <a href="admin-ai-upload.html">IA</a>
+            <a href="admin-prescription.html">Prescrever</a>
+            <a href="admin-atletas.html">Atletas</a>
+            <a href="admin-pagamentos.html">Pagamentos</a>
+            <a href="admin-treinadores.html">Treinadores</a>
+            <a href="admin-config.html">⚙️ Config</a>
+            <a href="#" id="logout-link">Sair</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h2 id="welcome-text" style="margin-bottom: 20px; font-size: 24px;">Olá!</h2>
+        <p style="color: var(--primary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px;">Gerencie sua assessoria</p>
+        
+        <!-- Notificações -->
+        <div id="notifications-area"></div>
+        
+        <!-- Estatísticas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div style="color: var(--primary); font-size:24px; margin-bottom:10px;">👥</div>
+                <p style="color:#AAA; text-transform:uppercase; font-size:12px;">Total de Atletas</p>
+                <div class="stat-value" id="count-atletas">0</div>
+            </div>
+            <div class="stat-card">
+                <div style="color: var(--accent); font-size:24px; margin-bottom:10px;">👨‍🏫</div>
+                <p style="color:#AAA; text-transform:uppercase; font-size:12px;">Total de Treinadores</p>
+                <div class="stat-value" id="count-treinadores">0</div>
+            </div>
+            <div class="stat-card">
+                <div style="color: var(--accent); font-size:24px; margin-bottom:10px;">🏋️</div>
+                <p style="color:#AAA; text-transform:uppercase; font-size:12px;">Treinos Prescritos</p>
+                <div class="stat-value" id="count-treinos">0</div>
+            </div>
+            <div class="stat-card">
+                <div style="color: #FFB800; font-size:24px; margin-bottom:10px;">💰</div>
+                <p style="color:#AAA; text-transform:uppercase; font-size:12px;">Pagamentos Pendentes</p>
+                <div class="stat-value" id="count-pagamentos">0</div>
+            </div>
+        </div>
+        
+        <!-- Ações Rápidas -->
+        <h3 style="color: var(--white); margin:30px 0 15px 0;">Ações Rápidas</h3>
+        <div class="btn-grid">
+            <a href="admin-atletas.html" class="neon-btn">Gerenciar Atletas</a>
+            <a href="admin-treinadores.html" class="neon-btn">Gerenciar Treinadores</a>
+            <a href="admin-pagamentos.html" class="neon-btn accent">Gerenciar Pagamentos</a>
+            <a href="admin-prescription.html" class="neon-btn accent">Prescrever Treino</a>
+            <a href="admin-ai-upload.html" class="neon-btn" style="border-color: var(--accent);">Ler Imagem</a>
+        </div>
+        
+        <!-- Últimos Treinos -->
+        <h3 style="color: var(--white); margin:30px 0 15px 0;">Últimos Treinos</h3>
+        <div id="last-workouts">
+        </div>
+    </div>
+    
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        
+        document.getElementById('logout-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+        
+        function loadNotifications() {
+            const notificationsDiv = document.getElementById('notifications-area');
+            const payments = getPayments();
+            const pendingConfirmations = payments.filter(p => p.status === 'pending_confirmation');
+            
+            if (pendingConfirmations.length === 0) {
+                notificationsDiv.innerHTML = '';
+                return;
+            }
+            
+            notificationsDiv.innerHTML = pendingConfirmations.map(p => `
+                <div class="notification-card">
+                    <h4 style="color: #00E5FF; margin:0 0 10px; display:flex; align-items:center; gap:10px;">
+                        ⏳ Confirmação de Pagamento Pendente
+                    </h4>
+                    <p style="color:#FFF; margin:0 0 8px; font-size:16px;">
+                        <strong>${p.athleteName}</strong> solicitou confirmação de pagamento de 
+                        <span style="color:#4CD964; font-weight:bold;">R$${p.amount.toFixed(2)}</span> (${p.type === 'matricula' ? 'Matrícula' : 'Mensalidade'})
+                    </p>
+                    <p style="color:#AAA; margin:0; font-size:14px;">Vencimento: ${formatDate(p.dueDate)}</p>
+                    <a href="admin-pagamentos.html" class="neon-btn accent" style="margin-top:10px; display:inline-block;">Ver Pagamentos</a>
+                </div>
+            `).join('');
+        }
+        
+        function loadDashboardData() {
+            const users = getUsers();
+            const workouts = getWorkouts();
+            const payments = getPayments();
+            
+            loadNotifications();
+            
+            document.getElementById('count-atletas').textContent = users.filter(u => u.role === 'athlete').length;
+            document.getElementById('count-treinadores').textContent = users.filter(u => u.role === 'admin').length;
+            document.getElementById('count-treinos').textContent = workouts.length;
+            document.getElementById('count-pagamentos').textContent = payments.filter(p => p.status === 'pendente').length;
+            
+            const lastWorkouts = workouts.slice(-3).reverse();
+            const container = document.getElementById('last-workouts');
+            
+            if (lastWorkouts.length === 0) {
+                container.innerHTML = '<div class="card"><p style="color:#AAA; text-align:center;">Nenhum treino registrado.</p></div>';
+                return;
+            }
+            
+            container.innerHTML = lastWorkouts.map(workout => {
+                const isCheckedIn = !!workout.checkIn;
+                return `
+                    <div class="card accent-left">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                            <div>
+                                <h4 style="margin:0 0 5px 0;">${workout.athleteName}</h4>
+                                <p style="color:#AAA; font-size:14px; margin:0;">
+                                    ${workout.day} - ${workout.dayDate} | Semana ${workout.week}
+                                </p>
+                                ${workout.description ? `<p style="color:#AAA; font-size:14px; margin:5px 0 0 0;">${workout.description}</p>` : ''}
+                            </div>
+                            ${isCheckedIn ? `
+                                <p style="color:#4CD964; font-size:14px; margin:0;">✅ ${workout.checkIn}</p>
+                            ` : `
+                                <p style="color:#FFB800; font-size:14px; margin:0;">⏳ Pendente</p>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        loadDashboardData();
+    </script>
+</body>
+</html>

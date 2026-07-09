@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iRunner PLAN - Gerenciar Treinadores</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .avatar-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--accent);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .avatar-preview:hover {
+            transform: scale(1.05);
+        }
+        .avatar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .trainer-item-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <img src="assets/logo.png" alt="iRunner Logo" class="nav-logo" style="height: 50px; width: 50px; border-radius: 50%; object-fit: contain; margin-right: 10px;"/>
+            iRunner PLAN
+        </div>
+        <div class="navbar-nav">
+            <a href="admin-dashboard.html">Dashboard</a>
+            <a href="admin-ai-upload.html">IA</a>
+            <a href="admin-prescription.html">Prescrever</a>
+            <a href="admin-atletas.html">Atletas</a>
+            <a href="admin-pagamentos.html">Pagamentos</a>
+            <a href="admin-treinadores.html" class="active">Treinadores</a>
+            <a href="#" id="logout-link">Sair</a>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <h2 id="welcome-text" style="margin-bottom: 20px; font-size: 24px;">Gerenciar Treinadores</h2>
+        
+        <div id="alert-container"></div>
+        
+        <!-- Adicionar Novo Treinador -->
+        <div class="card" style="margin-bottom:30px;">
+            <h3 style="margin-bottom:15px;">Adicionar Novo Treinador</h3>
+            
+            <div class="avatar-container">
+                <img id="new-trainer-avatar-preview" src="" alt="Avatar Preview" class="avatar-preview">
+                <input type="file" id="new-trainer-avatar" accept="image/*" style="display: none;">
+                <button type="button" onclick="document.getElementById('new-trainer-avatar').click()" class="neon-btn accent" style="font-size: 14px;">
+                    Escolher Foto
+                </button>
+            </div>
+            
+            <form id="add-trainer-form">
+                <div class="input-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="new-trainer-name" placeholder="Digite o nome" required>
+                </div>
+                <div class="input-group">
+                    <label>E-mail/Login</label>
+                    <input type="text" id="new-trainer-email" placeholder="Digite o login" required>
+                </div>
+                <div class="input-group">
+                    <label>Senha</label>
+                    <input type="password" id="new-trainer-password" placeholder="Digite a senha" required>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                    <div class="input-group">
+                        <label>CREF</label>
+                        <input type="text" id="new-trainer-cref" placeholder="Número do CREF">
+                    </div>
+                    <div class="input-group">
+                        <label>Especialidade</label>
+                        <input type="text" id="new-trainer-especialidade" placeholder="Ex: Corrida de rua">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Telefone</label>
+                    <input type="text" id="new-trainer-telefone" placeholder="Digite o telefone">
+                </div>
+                <button type="submit" class="neon-btn">Adicionar Treinador</button>
+            </form>
+        </div>
+        
+        <!-- Lista de Treinadores -->
+        <h3 style="color: var(--white); margin-bottom:15px;">Treinadores Cadastrados</h3>
+        <div id="trainers-list">
+        </div>
+    </div>
+    
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        let currentNewTrainerAvatar = DEFAULT_AVATAR;
+        
+        document.getElementById('logout-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+        
+        // Initialize avatar preview
+        document.getElementById('new-trainer-avatar-preview').src = DEFAULT_AVATAR;
+        
+        // Handle avatar file selection
+        document.getElementById('new-trainer-avatar').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentNewTrainerAvatar = event.target.result;
+                    document.getElementById('new-trainer-avatar-preview').src = currentNewTrainerAvatar;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        function loadTrainers() {
+            const users = getUsers();
+            const trainers = users.filter(u => u.role === 'admin');
+            const container = document.getElementById('trainers-list');
+            
+            if (trainers.length === 0) {
+                container.innerHTML = '<div class="card"><p style="color:#AAA; text-align:center;">Nenhum treinador cadastrado.</p></div>';
+                return;
+            }
+            
+            container.innerHTML = trainers.map(trainer => `
+                <div class="card accent-left" style="margin-bottom:15px;">
+                    <div style="display:flex; align-items:center; gap:15px; flex-wrap:wrap; margin-bottom:10px;">
+                        <img src="${trainer.avatar || DEFAULT_AVATAR}" alt="${trainer.name}" class="trainer-item-avatar">
+                        <div style="flex:1;">
+                            <h4 style="margin:0 0 5px 0; color:var(--accent);">${trainer.name}</h4>
+                            <p style="color:#AAA; font-size:14px; margin:0;">Login: ${trainer.email}</p>
+                        </div>
+                        ${trainer.id !== 1 ? `<button onclick="deleteTrainer(${trainer.id})" class="neon-btn" style="border-color:var(--error); color:var(--error);">Excluir</button>` : '<span style="color:#AAA; font-style:italic;">(Não pode ser excluído)</span>'}
+                    </div>
+                    <div style="border-top:1px solid #333; padding-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        ${trainer.cref ? `<div><strong style="color:#AAA;">CREF:</strong> ${trainer.cref}</div>` : ''}
+                        ${trainer.especialidade ? `<div><strong style="color:#AAA;">Especialidade:</strong> ${trainer.especialidade}</div>` : ''}
+                        ${trainer.telefone ? `<div><strong style="color:#AAA;">Telefone:</strong> ${trainer.telefone}</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function deleteTrainer(id) {
+            try {
+                if (confirm('Tem certeza que deseja excluir este treinador?')) {
+                    const users = getUsers();
+                    const filtered = users.filter(u => u.id !== id);
+                    
+                    if (saveUsers(filtered)) {
+                        showAlert('Treinador excluído com sucesso!', 'success');
+                        loadTrainers();
+                    } else {
+                        showAlert('Erro ao excluir! Tente novamente.', 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao deletar treinador:', error);
+                showAlert('Erro! Tente novamente.', 'error');
+            }
+        }
+        
+        document.getElementById('add-trainer-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            try {
+                const name = document.getElementById('new-trainer-name').value.trim();
+                const email = document.getElementById('new-trainer-email').value.trim();
+                const password = document.getElementById('new-trainer-password').value.trim();
+                const cref = document.getElementById('new-trainer-cref').value.trim();
+                const especialidade = document.getElementById('new-trainer-especialidade').value.trim();
+                const telefone = document.getElementById('new-trainer-telefone').value.trim();
+                
+                const users = getUsers();
+                if (users.find(u => u.email === email)) {
+                    showAlert('Este e-mail já está cadastrado!', 'error');
+                    return;
+                }
+                
+                const newId = generateUniqueId(users);
+                const newTrainer = {
+                    id: newId,
+                    role: 'admin',
+                    name,
+                    email,
+                    password,
+                    cref: cref || null,
+                    especialidade: especialidade || null,
+                    telefone: telefone || null,
+                    avatar: currentNewTrainerAvatar
+                };
+                users.push(newTrainer);
+                
+                if (saveUsers(users)) {
+                    // Reset form and avatar
+                    document.getElementById('add-trainer-form').reset();
+                    currentNewTrainerAvatar = DEFAULT_AVATAR;
+                    document.getElementById('new-trainer-avatar-preview').src = DEFAULT_AVATAR;
+                    
+                    showAlert('Treinador adicionado com sucesso!', 'success');
+                    loadTrainers();
+                } else {
+                    showAlert('Erro ao salvar! Tente novamente.', 'error');
+                }
+            } catch (error) {
+                console.error('Erro ao adicionar treinador:', error);
+                showAlert('Erro! Tente novamente.', 'error');
+            }
+        });
+        
+        loadTrainers();
+    </script>
+</body>
+</html>
