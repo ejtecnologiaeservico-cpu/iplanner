@@ -23,9 +23,31 @@ iRunner PLAN/
 
 ## Como Usar o Sistema Web (Para Deploy em Servidor)
 
-1. **Faça o upload de toda a pasta raiz para seu servidor web (Apache, Nginx, etc.)
+### Opção 1: GitHub Pages (Recomendado)
+1. Crie um repositório no GitHub
+2. Inicialize o Git localmente (se ainda não tiver):
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git branch -M main
+   git remote add origin https://github.com/SEU-USUARIO/SEU-REPOSITORIO.git
+   git push -u origin main
+   ```
+3. Vá para o repositório no GitHub > **Settings** > **Pages**
+4. Em **Build and deployment**, escolha:
+   - **Source**: Deploy from a branch
+   - **Branch**: `main` (ou `master`), pasta `/ (root)`
+5. Clique em **Save** e aguarde alguns minutos. O sistema estará acessível em:
+   ```
+   https://SEU-USUARIO.github.io/SEU-REPOSITORIO/
+   ```
+
+### Opção 2: Servidor Web Tradicional
+1. Faça o upload de toda a pasta raiz para seu servidor web (Apache, Nginx, etc.)
 2. Acesse o arquivo `index.html` pelo navegador
-3. **Credenciais padrão do administrador**:
+
+### Credenciais padrão do administrador
    - E-mail: `admin`
    - Senha: `ej99763463`
 

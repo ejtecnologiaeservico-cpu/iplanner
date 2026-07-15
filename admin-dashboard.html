@@ -80,6 +80,10 @@
         </div>
     </div>
     
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="js/app.js"></script>
     <script>
         checkAuth();
@@ -89,9 +93,9 @@
             logout();
         });
         
-        function loadNotifications() {
+        async function loadNotifications() {
             const notificationsDiv = document.getElementById('notifications-area');
-            const payments = getPayments();
+            const payments = await getPayments();
             const pendingConfirmations = payments.filter(p => p.status === 'pending_confirmation');
             
             if (pendingConfirmations.length === 0) {
@@ -114,10 +118,10 @@
             `).join('');
         }
         
-        function loadDashboardData() {
-            const users = getUsers();
-            const workouts = getWorkouts();
-            const payments = getPayments();
+        async function loadDashboardData() {
+            const users = await getUsers();
+            const workouts = await getWorkouts();
+            const payments = await getPayments();
             
             loadNotifications();
             

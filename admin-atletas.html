@@ -143,6 +143,10 @@
         </div>
     </div>
 
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="js/app.js"></script>
     <script>
         checkAuth();
@@ -194,10 +198,10 @@
         }
         
         // Form submit handler for add or edit
-        document.getElementById('athlete-form').addEventListener('submit', function(e) {
+        document.getElementById('athlete-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             try {
-                const users = getUsers();
+                const users = await getUsers();
                 const name = document.getElementById('new-athlete-name').value.trim();
                 const email = document.getElementById('new-athlete-email').value.trim();
                 const password = document.getElementById('new-athlete-password').value.trim();
@@ -254,8 +258,8 @@
                     }
                 }
                 
-                saveUsers(users);
-                loadAthletes();
+                await saveUsers(users);
+                await loadAthletes();
                 closeModal();
             } catch (error) {
                 console.error(error);
@@ -263,8 +267,8 @@
             }
         });
         
-        function editAthlete(athleteId) {
-            const users = getUsers();
+        async function editAthlete(athleteId) {
+            const users = await getUsers();
             const athlete = users.find(u => u.id === athleteId);
             if (!athlete) return;
             
@@ -288,38 +292,39 @@
             openModal();
         }
         
-        function deleteAthlete(athleteId) {
+        async function deleteAthlete(athleteId) {
             if (!confirm('Tem certeza que deseja excluir este atleta e todos os seus dados?')) return;
             try {
-                let users = getUsers();
+                let users = await getUsers();
                 users = users.filter(u => u.id !== athleteId);
-                saveUsers(users);
+                await saveUsers(users);
                 
-                let workouts = getWorkouts();
+                let workouts = await getWorkouts();
                 workouts = workouts.filter(w => w.athleteId !== athleteId);
-                saveWorkouts(workouts);
+                await saveWorkouts(workouts);
                 
-                let payments = getPayments();
+                let payments = await getPayments();
                 payments = payments.filter(p => p.athleteId !== athleteId);
-                savePayments(payments);
+                await savePayments(payments);
                 
                 showAlert('Atleta e dados relacionados removidos!', 'success');
-                loadAthletes();
+                await loadAthletes();
             } catch (err) {
                 console.error(err);
                 showAlert('Erro ao remover atleta!', 'error');
             }
         }
         
-        function loadAthletes() {
-            const users = getUsers().filter(u => u.role === 'athlete');
+        async function loadAthletes() {
+            const users = await getUsers();
+            const athletes = users.filter(u => u.role === 'athlete');
             const container = document.getElementById('athletes-list');
-            if (users.length === 0) {
+            if (athletes.length === 0) {
                 container.innerHTML = '<div class="card"><p style="color:#AAA; text-align:center;">Nenhum atleta cadastrado!</p></div>';
                 return;
             }
             
-            container.innerHTML = users.map(athlete => {
+            container.innerHTML = athletes.map(athlete => {
                 return `
                     <div class="card accent-left" style="margin-bottom:15px;">
                         <div class="athlete-card">
@@ -328,7 +333,7 @@
                                 <div style="flex:1;">
                                     <h4 style="margin:0 0 5px; color:var(--white);">${athlete.name}</h4>
                                     <p style="color:#AAA; font-size:14px; margin:0;">${athlete.email}</p>
-                                    ${athlete.objetivo ? `<p style="color:#999; font-size:13px; margin-top:3px;">🎯 ${athlete.objetivo}</p>` : ''}
+                                    ${athlete.objetivo ? `<p style="color:#999; font-size:13px; margin-top:4px;">🎯 ${athlete.objetivo}</p>` : ''}
                                 </div>
                             </div>
                             <div style="display:flex; gap:8px; flex-wrap:wrap;">

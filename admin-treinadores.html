@@ -105,6 +105,10 @@
         </div>
     </div>
     
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="js/app.js"></script>
     <script>
         checkAuth();
@@ -131,8 +135,8 @@
             }
         });
         
-        function loadTrainers() {
-            const users = getUsers();
+        async function loadTrainers() {
+            const users = await getUsers();
             const trainers = users.filter(u => u.role === 'admin');
             const container = document.getElementById('trainers-list');
             
@@ -160,15 +164,15 @@
             `).join('');
         }
         
-        function deleteTrainer(id) {
+        async function deleteTrainer(id) {
             try {
                 if (confirm('Tem certeza que deseja excluir este treinador?')) {
-                    const users = getUsers();
+                    const users = await getUsers();
                     const filtered = users.filter(u => u.id !== id);
                     
-                    if (saveUsers(filtered)) {
+                    if (await saveUsers(filtered)) {
                         showAlert('Treinador excluído com sucesso!', 'success');
-                        loadTrainers();
+                        await loadTrainers();
                     } else {
                         showAlert('Erro ao excluir! Tente novamente.', 'error');
                     }
@@ -179,7 +183,7 @@
             }
         }
         
-        document.getElementById('add-trainer-form').addEventListener('submit', function(e) {
+        document.getElementById('add-trainer-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             try {
@@ -190,7 +194,7 @@
                 const especialidade = document.getElementById('new-trainer-especialidade').value.trim();
                 const telefone = document.getElementById('new-trainer-telefone').value.trim();
                 
-                const users = getUsers();
+                const users = await getUsers();
                 if (users.find(u => u.email === email)) {
                     showAlert('Este e-mail já está cadastrado!', 'error');
                     return;
@@ -210,14 +214,14 @@
                 };
                 users.push(newTrainer);
                 
-                if (saveUsers(users)) {
+                if (await saveUsers(users)) {
                     // Reset form and avatar
                     document.getElementById('add-trainer-form').reset();
                     currentNewTrainerAvatar = DEFAULT_AVATAR;
                     document.getElementById('new-trainer-avatar-preview').src = DEFAULT_AVATAR;
                     
                     showAlert('Treinador adicionado com sucesso!', 'success');
-                    loadTrainers();
+                    await loadTrainers();
                 } else {
                     showAlert('Erro ao salvar! Tente novamente.', 'error');
                 }

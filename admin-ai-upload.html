@@ -93,6 +93,10 @@
         </div>
     </div>
     
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="js/app.js"></script>
     <script>
         checkAuth();
@@ -105,10 +109,11 @@
         });
         
         // Load athletes
-        function loadAthleteSelector() {
-            const users = getUsers().filter(u => u.role === 'athlete');
+        async function loadAthleteSelector() {
+            const users = await getUsers();
+            const athletes = users.filter(u => u.role === 'athlete');
             const select = document.getElementById('athlete-selector');
-            select.innerHTML = users.map(a => `<option value="${a.id}" data-name="${a.name}">${a.name}</option>`).join('');
+            select.innerHTML = athletes.map(a => `<option value="${a.id}" data-name="${a.name}">${a.name}</option>`).join('');
         }
         loadAthleteSelector();
         
@@ -138,7 +143,7 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner" style="width:20px; height:20px; display:inline-block; vertical-align:middle; margin-right:8px;"></span>Processando...';
             
-            setTimeout(() => {
+            setTimeout(function() {
                 extractedData = MOCK_EXTRACTED_DATA;
                 
                 // Pre-fill form
@@ -166,7 +171,7 @@
             }, 2000);
         });
         
-        document.getElementById('save-btn').addEventListener('click', function() {
+        document.getElementById('save-btn').addEventListener('click', async function() {
             const athleteSelect = document.getElementById('athlete-selector');
             const athleteId = parseInt(athleteSelect.value);
             const athleteName = athleteSelect.options[athleteSelect.selectedIndex].dataset.name;
@@ -176,7 +181,7 @@
             const formattedDate = dateObj.toLocaleDateString('pt-BR');
             
             const newMetric = {
-                id: generateUniqueId(getPerformanceMetrics()),
+                id: generateUniqueId(await getPerformanceMetrics()),
                 athleteId: athleteId,
                 athleteName: athleteName,
                 date: formattedDate,
@@ -188,9 +193,9 @@
                 }
             };
             
-            const metrics = getPerformanceMetrics();
+            const metrics = await getPerformanceMetrics();
             metrics.push(newMetric);
-            savePerformanceMetrics(metrics);
+            await savePerformanceMetrics(metrics);
             
             showAlert('Dados do atleta salvos com sucesso!', 'success');
             

@@ -110,6 +110,10 @@
         </form>
     </div>
     
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <!-- Add Firebase products that you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="js/app.js"></script>
     <script>
         checkAuth();
@@ -121,8 +125,8 @@
         
         let exercises = [];
         
-        function loadAthletesSelect() {
-            const users = getUsers();
+        async function loadAthletesSelect() {
+            const users = await getUsers();
             const athletes = users.filter(u => u.role === 'athlete');
             const select = document.getElementById('athlete-select');
             select.innerHTML = athletes.map(a => `<option value="${a.id}" data-name="${a.name}">${a.name}</option>`).join('');
@@ -181,7 +185,7 @@
             `).join('');
         }
         
-        document.getElementById('prescription-form').addEventListener('submit', function(e) {
+        document.getElementById('prescription-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const athleteId = parseInt(document.getElementById('athlete-select').value);
             const athleteName = document.getElementById('athlete-select').options[document.getElementById('athlete-select').selectedIndex].dataset.name;
@@ -195,7 +199,7 @@
                 return;
             }
             
-            const workouts = getWorkouts();
+            const workouts = await getWorkouts();
             const newId = Math.max(...workouts.map(w => w.id), 0) + 1;
             const newWorkout = {
                 id: newId,
@@ -209,7 +213,7 @@
                 checkIn: null
             };
             workouts.push(newWorkout);
-            saveWorkouts(workouts);
+            await saveWorkouts(workouts);
             
             showAlert(`Treino para ${athleteName} salvo com sucesso!`, 'success');
             
