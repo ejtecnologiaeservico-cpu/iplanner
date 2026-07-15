@@ -1,12 +1,13 @@
 // Funções Globais iRunner PLAN (Versão com Firebase Firestore!)
 // Firebase Configuration (replace with your own Firebase project config!)
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyAyvnkPnq6IoImawmWGrXFDA2400jb5SHU",
   authDomain: "irunner-plan.firebaseapp.com",
   projectId: "irunner-plan",
   storageBucket: "irunner-plan.firebasestorage.app",
   messagingSenderId: "412798052391",
-  appId: "1:412798052391:web:74e1153133a6abfa7dc602"
+  appId: "1:412798052391:web:74e1153133a6abfa7dc602",
   measurementId: "G-8RVX8ZL2DX"
 };
 
