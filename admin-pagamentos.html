@@ -111,11 +111,11 @@
         let editingPaymentId = null;
         const modal = document.getElementById('payment-modal');
 
-        document.getElementById('add-payment-btn').addEventListener('click', () => {
+        document.getElementById('add-payment-btn').addEventListener('click', async () => {
             editingPaymentId = null;
             document.getElementById('payment-modal-title').textContent = 'Adicionar Novo Pagamento';
             resetPaymentForm();
-            loadAthleteSelect();
+            await loadAthleteSelect();
             openModal();
         });
         
@@ -128,16 +128,17 @@
         
         function resetPaymentForm() { document.getElementById('payment-form').reset(); }
         
-        function loadAthleteSelect() {
-            const athletes = getUsers().filter(u => u.role === 'athlete');
+        async function loadAthleteSelect() {
+            const users = await getUsers();
+            const athletes = users.filter(u => u.role === 'athlete');
             const select = document.getElementById('payment-athlete');
             select.innerHTML = athletes.map(a => `<option value="${a.id}" data-name="${a.name}">${a.name}</option>`).join('');
         }
         
-        document.getElementById('payment-form').addEventListener('submit', function(e) {
+        document.getElementById('payment-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             try {
-                const payments = getPayments();
+                const payments = await getPayments();
                 const athleteSelect = document.getElementById('payment-athlete');
                 
                 const paymentData = {
@@ -166,8 +167,8 @@
                     }
                 }
 
-                savePayments(payments);
-                loadPayments();
+                await savePayments(payments);
+                await loadPayments();
                 closeModal();
             } catch (error) {
                 console.error(error);
@@ -175,14 +176,14 @@
             }
         });
 
-        function editPayment(paymentId) {
-            const payments = getPayments();
+        async function editPayment(paymentId) {
+            const payments = await getPayments();
             const payment = payments.find(p => p.id === paymentId);
             if (!payment) return;
             
             editingPaymentId = paymentId;
             document.getElementById('payment-modal-title').textContent = 'Editar Pagamento';
-            loadAthleteSelect();
+            await loadAthleteSelect();
             
             document.getElementById('payment-athlete').value = payment.athleteId;
             document.getElementById('payment-type').value = payment.type;
@@ -193,9 +194,9 @@
             openModal();
         }
 
-        function markAsPaid(paymentId) {
+        async function markAsPaid(paymentId) {
             try {
-                const payments = getPayments();
+                const payments = await getPayments();
                 const idx = payments.findIndex(p => p.id === paymentId);
                 if (idx === -1) return;
                 
@@ -205,14 +206,14 @@
                 }
 
                 payments[idx].status = 'pago';
-                savePayments(payments);
+                await savePayments(payments);
                 
                 // Notify trainer
                 showAlert(`Pagamento de ${payments[idx].athleteName} marcado como pago!`, 'success');
                 playNotificationSound();
                 
                 if (confirm('Enviar notificações (email/WhatsApp)?')) {
-                    const config = getConfig();
+                    const config = await getConfig();
                     const msg = `O atleta ${payments[idx].athleteName} realizou um pagamento de R$${payments[idx].amount.toFixed(2)} referente a ${payments[idx].type}!`;
                     
                     // WhatsApp
@@ -222,28 +223,29 @@
                     window.open(`mailto:${config.notificationEmail}?subject=${encodeURIComponent('Pagamento Recebido')}&body=${encodeURIComponent(msg)}`);
                 }
 
-                loadPayments();
+                await loadPayments();
             } catch (err) {
                 console.error(err);
                 showAlert('Erro!', 'error');
             }
         }
 
-        function deletePayment(paymentId) {
+        async function deletePayment(paymentId) {
             if (!confirm('Remover este pagamento?')) return;
             try {
-                const payments = getPayments().filter(p => p.id !== paymentId);
-                savePayments(payments);
+                const payments = await getPayments();
+                const newPayments = payments.filter(p => p.id !== paymentId);
+                await savePayments(newPayments);
                 showAlert('Pagamento removido!', 'success');
-                loadPayments();
+                await loadPayments();
             } catch (error) {
                 console.error(error);
                 showAlert('Erro ao remover!', 'error');
             }
         }
         
-        function loadPayments() {
-            const payments = getPayments();
+        async function loadPayments() {
+            const payments = await getPayments();
             const container = document.getElementById('payments-list');
             
             if (payments.length === 0) {

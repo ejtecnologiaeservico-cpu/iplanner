@@ -303,33 +303,33 @@
         });
 
         document.getElementById('copy-pix-btn').addEventListener('click', async () => {
-            const config = getConfig();
+            const config = await getConfig();
             if (await copyToClipboard(config.pixCode)) {
                 showAlert('Pix copiado com sucesso!', 'success');
             }
         });
 
-        document.getElementById('confirm-payment-btn').addEventListener('click', function() {
+        document.getElementById('confirm-payment-btn').addEventListener('click', async function() {
             if (confirm('Confirma que já realizou o pagamento e deseja solicitar a confirmação do treinador?')) {
                 if (currentPayment) {
-                    const payments = getPayments();
+                    const payments = await getPayments();
                     const idx = payments.findIndex(p => p.id === currentPayment.id);
                     if (idx !== -1) {
                         payments[idx].status = 'pending_confirmation';
-                        savePayments(payments);
+                        await savePayments(payments);
                         showAlert('Solicitação de confirmação enviada para o treinador!', 'success');
                         modal.style.display = 'none';
                         
-                        loadAthletePayments();
+                        await loadAthletePayments();
                     }
                 }
             }
         });
         
         // Carregar notificações de pagamento
-        function loadPaymentNotifications() {
+        async function loadPaymentNotifications() {
             const notificationsDiv = document.getElementById('notifications-area');
-            const urgent = checkPaymentNotifications(user.id);
+            const urgent = await checkPaymentNotifications(user.id);
             
             if (urgent.length === 0) {
                 notificationsDiv.innerHTML = '';
@@ -359,9 +359,10 @@
             }).join('');
         }
         
-        function loadAthletePayments() {
+        async function loadAthletePayments() {
             const container = document.getElementById('athlete-payments');
-            const payments = getPayments().filter(p => p.athleteId === user.id);
+            const allPayments = await getPayments();
+            const payments = allPayments.filter(p => p.athleteId === user.id);
             
             if (payments.length === 0) {
                 container.innerHTML = '<div class="card"><p style="color:#AAA; text-align:center;">Nenhum pagamento encontrado!</p></div>';
@@ -413,12 +414,12 @@
             }).join('');
         }
         
-        function openPaymentModal(paymentId) {
-            const payments = getPayments();
-            const payment = payments.find(p => p.id === paymentId);
+        async function openPaymentModal(paymentId) {
+            const allPayments = await getPayments();
+            const payment = allPayments.find(p => p.id === paymentId);
             if (payment) {
                 currentPayment = payment;
-                const config = getConfig();
+                const config = await getConfig();
                 document.getElementById('pix-code-display').textContent = config.pixCode;
                 modal.style.display = 'flex';
             }
@@ -456,8 +457,9 @@
             }
         }
         
-        function loadAthleteWorkouts() {
-            const workouts = getWorkouts().filter(w => w.athleteId === user.id);
+        async function loadAthleteWorkouts() {
+            const allWorkouts = await getWorkouts();
+            const workouts = allWorkouts.filter(w => w.athleteId === user.id);
             const container = document.getElementById('workouts-list');
             if (workouts.length === 0) {
                 container.innerHTML = '<div class="card"><p style="color:#AAA; text-align:center;">Nenhum treino prescrito ainda.</p></div>';
@@ -500,9 +502,9 @@
             container.innerHTML = html;
         }
         
-        function handleCheckIn(workoutId) {
-            if (checkInWorkout(workoutId)) {
-                loadAthleteWorkouts();
+        async function handleCheckIn(workoutId) {
+            if (await checkInWorkout(workoutId)) {
+                await loadAthleteWorkouts();
             }
         }
 
@@ -520,8 +522,9 @@
             return parseFloat(paceStr) || 0;
         }
 
-        function loadPerformanceChart() {
-            const athleteMetrics = getPerformanceMetrics().filter(m => m.athleteId === user.id);
+        async function loadPerformanceChart() {
+            const allMetrics = await getPerformanceMetrics();
+            const athleteMetrics = allMetrics.filter(m => m.athleteId === user.id);
             const labels = athleteMetrics.map(m => m.date);
             
             let data = [];
@@ -599,21 +602,24 @@
 
         // Metric toggle event listeners
         document.querySelectorAll('.metric-toggle button').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', async function() {
                 document.querySelectorAll('.metric-toggle button').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
                 currentMetric = this.dataset.metric;
-                loadPerformanceChart();
+                await loadPerformanceChart();
             });
         });
 
         // Load everything!
-        loadAthleteInfo();
-        loadAthleteWorkouts();
-        loadPaymentNotifications();
-        loadAthletePayments();
-        loadNutritionAdvice();
-        loadPerformanceChart();
+        async function initPage() {
+            loadAthleteInfo();
+            await loadAthleteWorkouts();
+            await loadPaymentNotifications();
+            await loadAthletePayments();
+            loadNutritionAdvice();
+            await loadPerformanceChart();
+        }
+        initPage();
     </script>
 </body>
 </html>

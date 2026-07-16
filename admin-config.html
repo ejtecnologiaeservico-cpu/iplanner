@@ -73,12 +73,18 @@
         });
         
         // Load existing config
-        let config = getConfig();
-        document.getElementById('pix-code').value = config.pixCode;
-        document.getElementById('notification-email').value = config.notificationEmail;
-        document.getElementById('notification-whatsapp').value = config.notificationWhatsapp;
+        async function loadConfig() {
+            try {
+                const config = await getConfig();
+                document.getElementById('pix-code').value = config.pixCode;
+                document.getElementById('notification-email').value = config.notificationEmail;
+                document.getElementById('notification-whatsapp').value = config.notificationWhatsapp;
+            } catch (err) {
+                console.error(err);
+            }
+        }
 
-        document.getElementById('config-form').addEventListener('submit', function(e) {
+        document.getElementById('config-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             try {
                 const newConfig = {
@@ -86,10 +92,10 @@
                     notificationEmail: document.getElementById('notification-email').value.trim(),
                     notificationWhatsapp: document.getElementById('notification-whatsapp').value.trim()
                 };
-                saveConfig(newConfig);
-                config = newConfig;
+                await saveConfig(newConfig);
                 showAlert('Configurações salvas com sucesso!', 'success');
             } catch (err) {
+                console.error(err);
                 showAlert('Erro ao salvar configurações!', 'error');
             }
         });
@@ -101,6 +107,8 @@
                 document.getElementById('notification-whatsapp').value = DEFAULT_CONFIG.notificationWhatsapp;
             }
         });
+
+        loadConfig();
     </script>
 </body>
 </html>
