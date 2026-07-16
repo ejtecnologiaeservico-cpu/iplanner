@@ -13,10 +13,12 @@ const firebaseConfig = {
 // Initialize Firebase
 try {
   firebase.initializeApp(firebaseConfig);
+  console.log("✅ Firebase initialized successfully!");
 } catch (e) {
-  // Firebase already initialized, do nothing
+  console.log("⚠️ Firebase already initialized");
 }
 const db = firebase.firestore();
+console.log("🔥 Firestore database reference obtained!");
 
 // Default avatar (placeholder)
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23B026FF'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E";
@@ -126,51 +128,73 @@ function getDefaultPerformanceMetrics() {
 
 // Função para inicializar Firestore com dados padrão, se o banco estiver vazio
 async function initData() {
+  console.log("🔄 Starting initData()...");
   try {
     // Verificar se a coleção 'users' existe e tem dados
+    console.log("📥 Checking 'users' collection...");
     const usersSnapshot = await db.collection('users').get();
+    console.log("✅ 'users' snapshot size:", usersSnapshot.size);
     if (usersSnapshot.empty) {
+      console.log("📝 Adding default users...");
       // Adicionar usuários padrão
       for (const user of DEFAULT_USERS) {
+        console.log("Adding user:", user.email);
         await db.collection('users').doc(String(user.id)).set(user);
       }
+      console.log("✅ Default users added!");
+    } else {
+      console.log("✅ Users already exist, skipping.");
     }
 
     // Verificar treinos
+    console.log("📥 Checking 'workouts' collection...");
     const workoutsSnapshot = await db.collection('workouts').get();
     if (workoutsSnapshot.empty) {
+      console.log("📝 Adding default workouts...");
       const defaultWorkouts = getDefaultWorkouts();
       for (const workout of defaultWorkouts) {
         await db.collection('workouts').doc(String(workout.id)).set(workout);
       }
+      console.log("✅ Default workouts added!");
     }
 
     // Verificar pagamentos
+    console.log("📥 Checking 'payments' collection...");
     const paymentsSnapshot = await db.collection('payments').get();
     if (paymentsSnapshot.empty) {
+      console.log("📝 Adding default payments...");
       const defaultPayments = getDefaultPayments();
       for (const payment of defaultPayments) {
         await db.collection('payments').doc(String(payment.id)).set(payment);
       }
+      console.log("✅ Default payments added!");
     }
 
     // Verificar configurações
+    console.log("📥 Checking 'config' document...");
     const configDoc = await db.collection('config').doc('system').get();
     if (!configDoc.exists) {
+      console.log("📝 Adding default config...");
       await db.collection('config').doc('system').set(DEFAULT_CONFIG);
+      console.log("✅ Default config added!");
     }
 
     // Verificar métricas de performance
+    console.log("📥 Checking 'performance' collection...");
     const performanceSnapshot = await db.collection('performance').get();
     if (performanceSnapshot.empty) {
+      console.log("📝 Adding default performance metrics...");
       const defaultPerformance = getDefaultPerformanceMetrics();
       for (const metric of defaultPerformance) {
         await db.collection('performance').doc(String(metric.id)).set(metric);
       }
+      console.log("✅ Default performance metrics added!");
     }
+    console.log("✅ initData() completed!");
   } catch (error) {
-    console.error("Erro na inicialização dos dados:", error);
+    console.error("❌ Erro na inicialização dos dados:", error);
     // Fallback para localStorage se Firebase falhar
+    console.log("⚠️ Falling back to localStorage...");
     initLocalStorageFallback();
   }
 }
@@ -242,18 +266,25 @@ async function saveConfig(config) {
 }
 
 async function getUsers() {
+  console.log("🔍 getUsers() called!");
   try {
+    console.log("📥 Fetching users from Firestore...");
     const snapshot = await db.collection('users').get();
     const users = [];
     snapshot.forEach(doc => users.push(doc.data()));
+    console.log("✅ Found users in Firestore:", users.map(u => u.email));
     return users;
   } catch (error) {
-    console.error("Erro ao carregar usuários:", error);
+    console.error("❌ Erro ao carregar usuários do Firestore:", error);
     // Fallback para localStorage
     try {
+      console.log("⚠️ Falling back to localStorage for users...");
       const data = localStorage.getItem('irunner_users');
-      return data ? JSON.parse(data) : [];
+      const users = data ? JSON.parse(data) : [];
+      console.log("✅ Found users in localStorage:", users.map(u => u.email));
+      return users;
     } catch (e) {
+      console.error("❌ Erro ao carregar do localStorage:", e);
       return [];
     }
   }
@@ -497,25 +528,33 @@ async function checkAuth() {
 // ================== FUNÇÕES DE LOGIN ==================
 
 async function validateLogin(email, password) {
+  console.log("🔑 validateLogin() called with email:", email);
   try {
     if (!email || !password) {
+      console.log("⚠️ Missing email or password");
       return { success: false, error: "Preencha todos os campos" };
     }
     
+    console.log("📥 Fetching users to validate...");
     const users = await getUsers();
+    console.log("👥 All users found:", users.map(u => ({ email: u.email, id: u.id })));
     const user = users.find(u => u.email === email);
     
     if (!user) {
+      console.log("❌ User not found for email:", email);
       return { success: false, error: "Usuário não encontrado" };
     }
     
+    console.log("✅ User found! Checking password...");
     if (user.password !== password) {
+      console.log("❌ Incorrect password for user:", email);
       return { success: false, error: "Senha incorreta" };
     }
     
+    console.log("✅ Login successful for user:", email);
     return { success: true, user };
   } catch (error) {
-    console.error("Erro na validação do login:", error);
+    console.error("❌ Erro na validação do login:", error);
     return { success: false, error: "Erro interno no sistema. Tente novamente." };
   }
 }
